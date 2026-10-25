@@ -44,7 +44,7 @@ async function connectLive(username) {
   try { live?.disconnect?.(); } catch {}
   live = null; liveUser = username;
   status(false, "Connexion au live de @" + username + "…");
-  const conn = new Conn(username, { processInitialData: false, enableExtendedGiftInfo: true });
+  const conn = new Conn(username, { processInitialData: false, enableExtendedGiftInfo: false, fetchRoomInfoOnConnect: true });
 
   conn.on("chat", d => broadcast({ t: "chat", ...who(d), text: d.comment || "" }));
   conn.on("gift", d => {
@@ -65,7 +65,7 @@ async function connectLive(username) {
   } catch (e) {
     const m = String(e?.message || e);
     const hint = /offline|not.*live|LIVE has ended|isn't online/i.test(m) ? "ton live n'est pas lancé" :
-                 /rate|limit|429/i.test(m) ? "trop d'essais, réessaie dans 1 minute" : m.slice(0, 120);
+                 /rate|limit|429/i.test(m) ? "trop d'essais, réessaie dans 1 minute" : /Business plan/i.test(m) ? "service de connexion limité, réessaie dans 1 minute" : m.slice(0, 120);
     status(false, "Connexion impossible : " + hint);
   }
 }
