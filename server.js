@@ -17,12 +17,21 @@ const page = () => fs.readFileSync(path.join(dir, "public", "index.html"), "utf8
   .replace("<!--SERVER-->", "<script>window.JACKPOT_SERVER=1</script>");
 
 const server = http.createServer((req, res) => {
+  if (req.url.startsWith("/debug")) {
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ liveUser, liveOk, status: lastStatus.msg, clients: wss.clients.size, events: DBG.counts, lastChats: DBG.chats, errors: DBG.errors, since: DBG.since }, null, 2));
+    return;
+  }
   if (req.url.startsWith("/health")) { res.writeHead(200, { "Content-Type": "text/plain" }); res.end("ok"); return; }
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071233"></head><body>${page()}</body></html>`;
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
   res.end(html);
 });
 
+const DBG = { counts: {}, chats: [], errors: [], since: null };
+const dbgErr = m => { DBG.errors.unshift(new Date().toISOString().slice(11, 19) + " " + String(m).slice(0, 300)); DBG.errors.length = Math.min(DBG.errors.length, 15); };
+const EV = TL.WebcastEvent || TL.default?.WebcastEvent || {};
+const CHAT = EV.CHAT || "chat", GIFT = EV.GIFT || "gift", END = EV.STREAM_END || "streamEnd";
 const wss = new WebSocketServer({ server, path: "/ws" });
 let live = null, liveUser = null, liveOk = false, lastStatus = { t: "status", ok: false, msg: "Pas encore connecté au live" };
 
@@ -45,25 +54,34 @@ async function connectLive(username) {
   live = null; liveUser = username;
   status(false, "Connexion au live de @" + username + "…");
   const conn = new Conn(username, { processInitialData: false, enableExtendedGiftInfo: false, fetchRoomInfoOnConnect: true });
+  DBG.counts = {}; DBG.chats = []; DBG.since = new Date().toISOString();
+  const emit0 = conn.emit.bind(conn);                      // compte tous les événements reçus (diagnostic)
+  conn.emit = (name, ...a) => { DBG.counts[name] = (DBG.counts[name] || 0) + 1; return emit0(name, ...a); };
 
-  conn.on("chat", d => broadcast({ t: "chat", ...who(d), text: d.comment || "" }));
-  conn.on("gift", d => {
+  const onChat = d => {
+    const m = { t: "chat", ...who(d), text: d.comment ?? d.content ?? "" };
+    DBG.chats.unshift(m.nick + " : " + m.text); DBG.chats.length = Math.min(DBG.chats.length, 15);
+    broadcast(m);
+  };
+  conn.on(CHAT, onChat);
+  if (CHAT !== "chat") conn.on("chat", onChat);
+  conn.on(GIFT, d => {
     const type = d.giftDetails?.giftType ?? d.giftType;
     if (type === 1 && !d.repeatEnd) return;            // série de cadeaux pas encore finie
     const unit = d.giftDetails?.diamondCount ?? d.diamondCount ?? d.extendedGiftInfo?.diamond_count ?? 1;
     const count = d.repeatCount || 1;
     broadcast({ t: "gift", ...who(d), diamonds: Math.max(1, unit * count), name: d.giftDetails?.giftName || d.giftName || "cadeau" });
   });
-  conn.on("streamEnd", () => status(false, "Le live est terminé"));
+  conn.on(END, () => status(false, "Le live est terminé"));
   conn.on("disconnected", () => { if (live === conn) status(false, "Déconnecté du live. Appuie sur Connecter pour réessayer."); });
-  conn.on("error", e => console.error("[tiktok]", e?.message || e));
+  conn.on("error", e => { console.error("[tiktok]", e?.message || e); dbgErr(e?.message || e?.info || JSON.stringify(e)); });
 
   try {
     await conn.connect();
     live = conn;
     status(true, "Connecté au live de @" + username);
   } catch (e) {
-    const m = String(e?.message || e);
+    const m = String(e?.message || e); dbgErr(m);
     const hint = /offline|not.*live|LIVE has ended|isn't online/i.test(m) ? "ton live n'est pas lancé" :
                  /rate|limit|429/i.test(m) ? "trop d'essais, réessaie dans 1 minute" : /Business plan/i.test(m) ? "service de connexion limité, réessaie dans 1 minute" : m.slice(0, 120);
     status(false, "Connexion impossible : " + hint);
