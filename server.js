@@ -33,6 +33,7 @@ const dbgErr = m => { DBG.errors.unshift(new Date().toISOString().slice(11, 19) 
 const EV = TL.WebcastEvent || TL.default?.WebcastEvent || {};
 const CHAT = EV.CHAT || "chat", GIFT = EV.GIFT || "gift", END = EV.STREAM_END || "streamEnd";
 const wss = new WebSocketServer({ server, path: "/ws" });
+let lastTry = 0;
 let live = null, liveUser = null, liveOk = false, lastStatus = { t: "status", ok: false, msg: "Pas encore connecté au live" };
 
 function broadcast(o) {
@@ -50,10 +51,15 @@ async function connectLive(username) {
   username = String(username || "").trim().replace(/^@/, "");
   if (!username) return status(false, "Écris ton pseudo TikTok");
   if (live && liveUser === username && liveOk) return status(true, "Connecté au live de @" + username);
+  const wait = 30000 - (Date.now() - lastTry);            // évite de griller la limite gratuite d'essais
+  if (wait > 0) return status(false, `Patiente ${Math.ceil(wait / 1000)} s avant de réessayer`);
+  lastTry = Date.now();
   try { live?.disconnect?.(); } catch {}
   live = null; liveUser = username;
   status(false, "Connexion au live de @" + username + "…");
-  const conn = new Conn(username, { processInitialData: false, enableExtendedGiftInfo: false, fetchRoomInfoOnConnect: true });
+  const opts = { processInitialData: false, enableExtendedGiftInfo: false, fetchRoomInfoOnConnect: true };
+  if (process.env.EULER_API_KEY) opts.signApiKey = process.env.EULER_API_KEY;
+  const conn = new Conn(username, opts);
   DBG.counts = {}; DBG.chats = []; DBG.since = new Date().toISOString();
   const emit0 = conn.emit.bind(conn);                      // compte tous les événements reçus (diagnostic)
   conn.emit = (name, ...a) => { DBG.counts[name] = (DBG.counts[name] || 0) + 1; return emit0(name, ...a); };
