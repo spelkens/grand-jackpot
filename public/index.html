@@ -157,6 +157,38 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:800;z-index:20;max-width:90%}
 .pop{animation:pop .5s ease-out}
 @keyframes pop{0%{transform:scale(.8);opacity:0}70%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+
+/* ---------- Mode paysage (téléphone tourné) : remplit le cadre horizontal des lives « jeu » TikTok ---------- */
+#bGear{display:none}
+@media (orientation:landscape){
+  :root{--u:calc(2.3vh * var(--z))}
+  .safe .view,.view{flex:1;margin-top:0;height:auto}
+  #game{padding-block:6px}
+  .host{position:fixed;right:calc(8px + env(safe-area-inset-right,0px));bottom:calc(52px + env(safe-area-inset-bottom,0px));width:min(340px,70vw);max-height:80vh;z-index:15;
+    border:1px solid var(--line);border-radius:16px;padding:10px;background:rgba(7,18,51,.97);box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  .host:not(.open){display:none}
+  #bGear{display:grid;place-items:center;position:fixed;right:calc(8px + env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:16;
+    width:38px;height:38px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:18px;opacity:.55}
+  .host.need ~ #bGear,#bGear.need{opacity:1;background:var(--gold);color:var(--dark)}
+  .scene{display:grid;grid-template-columns:1.15fr 1fr;grid-template-rows:auto auto;gap:calc(var(--u)*1.4);align-content:center}
+  .qbox{grid-column:1;grid-row:1/3;align-self:center;font-size:calc(var(--u)*3.3)}
+  .opts{grid-column:2;grid-row:1/3;align-self:center}
+  .opt{font-size:calc(var(--u)*2.7)}
+  .revealed .qbox{grid-row:1;align-self:end;font-size:calc(var(--u)*2.4)}
+  .revealed .opts{grid-column:1;grid-row:2;align-self:start}
+  .revealed .opt.good{font-size:calc(var(--u)*3.2)}
+  .fast{grid-column:2;grid-row:1/3;align-self:center}
+  .fast li.p b,.fast li.p em{font-size:calc(var(--u)*2.3)}
+  .center{grid-column:1/-1;grid-row:1/3;display:grid;grid-template-columns:1fr 1.25fr;grid-auto-flow:row dense;align-content:center;align-items:center;justify-items:center;column-gap:calc(var(--u)*3)}
+  .center>*{grid-column:2;width:100%}
+  .center>h2,.center>.ball{grid-column:1;width:auto}
+  .center>.chest{grid-column:1;width:calc(var(--u)*15)}
+  .center>.ball,.center>.chest{grid-row:span 3}
+  .center h2{font-size:calc(var(--u)*4.4)}
+  .recap li{padding:calc(var(--u)*.35) calc(var(--u)*1.2)}
+  .recap .rk{width:calc(var(--u)*3.6);height:calc(var(--u)*3.6)}
+  .chip{font-size:calc(var(--u)*1.6)}
+}
 </style>
 
 <div class="rays"></div><div class="glow"></div>
@@ -257,6 +289,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
         <button id="bMenu">☰ Menu</button>
       </div>
     </div>
+    <button id="bGear" aria-label="Régie">⚙</button>
   </section>
 </div>
 <datalist id="plist"></datalist>
@@ -545,7 +578,7 @@ if(SERVER){
 
 function onChat(m){
   if(!S.accepting) return;
-  const r = String(m.text||"").trim().match(/^(?:r[ée]p(?:onse)?\s*:?\s*)?([abcd])[\s!.?]*$/i);
+  const r = String(m.text||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().match(/^(?:r[ée]p(?:onse)?\s*:?\s*)?([abcd])[\s!.?]*$/i);
   if(!r || S.answers.has(m.id)) return;
   S.answers.set(m.id, {l: r[1].toUpperCase(), t: performance.now(), nick: m.nick || m.id});
   const c = $("#hCnt"); c.hidden = false; c.textContent = "💬 " + S.answers.size;
@@ -589,6 +622,7 @@ async function thankGifts(){
 /* ======================= AFFICHAGE ======================= */
 const scene = () => $("#scene");
 const panel = () => $("#hostPanel");
+function needHost(on){ $("#host").classList.toggle("open", !!on); }
 function setScene(html, cls=""){ scene().className = "scene " + cls; scene().innerHTML = html; }
 function header(){
   $("#hQ").textContent = "Q " + Math.min(S.qi+1, CFG.nq) + "/" + CFG.nq;
@@ -680,7 +714,7 @@ async function reveal(q){
     panel().innerHTML = `<div class="htitle"><span>⚡ LES 5 PLUS RAPIDES</span><span id="rdT"></span></div>
       ${["1er","2e","3e","4e","5e"].map((r,i)=>`<div class="hin"><b>${r}</b><input id="sp${i}" list="plist" placeholder="Pseudo" autocomplete="off" autocapitalize="off"><em>+${share[i]}</em></div>`).join("")}
       <button class="ghost go" id="spOk">✔ Valider</button>`;
-    refreshList();
+    refreshList(); needHost(true);
     let typing = false;
     panel().querySelectorAll("input").forEach(inp => {
       inp.addEventListener("focus", () => typing = true);
@@ -697,7 +731,7 @@ async function reveal(q){
     }
     winners = [0,1,2,3,4].map(i => ($("#sp"+i)?.value||"").trim()).filter(Boolean);
     document.activeElement?.blur?.();
-    panel().innerHTML = "";
+    panel().innerHTML = ""; needHost(false);
   }
   winners = winners.map((w,i) => award(w, share[i])).filter(Boolean);
   const list = winners.length
@@ -749,7 +783,7 @@ async function chest(){
   panel().innerHTML = `<div class="htitle"><span>${S.live ? "Les cadeaux sont comptés tout seuls" : "Ajoute les pièces reçues"}</span></div>
     <div class="coinbtns">${[1,5,10,20].map(n=>`<button data-c="${n}">+${n}</button>`).join("")}</div>
     <div class="hin"><input id="donor" list="plist" placeholder="Pseudo du top donateur (facultatif)" autocomplete="off"><button class="ghost" id="cSkip">Passer</button></div>`;
-  refreshList();
+  refreshList(); if(!S.live) needHost(true);
   panel().querySelectorAll("[data-c]").forEach(b => b.onclick = () => { sfx.coin(); addCoins(+b.dataset.c); });
   let skipped = false;
   $("#cSkip").onclick = () => { skipped = true; S.skip = true; };
@@ -771,7 +805,7 @@ async function chest(){
   }
   S.paused = false; S.skip = false;
   const c = S.chest, donorIn = ($("#donor")?.value||"").trim().replace(/^@/,"");
-  panel().innerHTML = "";
+  panel().innerHTML = ""; needHost(false);
   if(c.coins >= c.goal){
     if(c.coins > c.goal) S.bank += c.coins - c.goal;
     const el = $("#chest"); el.classList.remove("locked"); el.classList.add("open"); sfx.open();
@@ -803,6 +837,7 @@ async function finale(){
     <div class="podium">${pod(1)}${pod(0)}${pod(2)}</div>
     <p class="lead" style="color:var(--mute)">À gagner : la gloire éternelle 👑</p>
     <p class="lead" id="nextMsg"></p></div>`);
+  if(!CFG.auto) needHost(true);
   panel().innerHTML = `<button class="big" id="again">▶ NOUVELLE MANCHE</button>`;
   $("#again").onclick = () => { S.skip = true; };
   sfx.open();
@@ -851,6 +886,7 @@ $("#vtest").onclick = () => {
   msg.textContent = "⏳ Test en cours…";
   setTimeout(() => { if(!started) msg.textContent = "❌ Aucun son. Ouvre le jeu dans Chrome ou Safari et sors le téléphone du mode silencieux."; }, 3500);
 };
+$("#bGear").onclick = () => $("#host").classList.toggle("open");
 $("#bPause").onclick = () => {
   S.paused = !S.paused;
   $("#bPause").textContent = S.paused ? "▶ Reprendre" : "⏸ Pause";
