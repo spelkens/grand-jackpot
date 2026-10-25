@@ -1,0 +1,13 @@
+{
+  "name": "grand-jackpot",
+  "version": "1.0.0",
+  "description": "Le Grand Jackpot : jeu de questions pour live TikTok, avec lecture automatique du chat et des cadeaux",
+  "type": "module",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "tiktok-live-connector": "^2.4.4",
+    "ws": "^8.18.0"
+  }
+}

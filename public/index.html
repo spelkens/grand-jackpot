@@ -1,0 +1,871 @@
+<title>Le Grand Jackpot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--SERVER-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Archivo:wght@400;600;800&display=swap">
+<style>
+/* Plateau TV vertical pour live TikTok : zone spectateurs entre le bandeau TikTok du haut et les commentaires du bas, régie de l'hôte dans la zone couverte par les commentaires */
+:root{
+  --bg:#071233; --panel:#0f2260; --panel2:#17307f; --line:#2a4aa8;
+  --gold:#ffc83a; --gold2:#ff9a1f; --ink:#f2f5ff; --mute:#9db0ea;
+  --good:#22d27a; --bad:#ff4d6d; --dark:#2a1300;
+  --f-disp:"Bungee", Impact, "Arial Black", sans-serif;
+  --f-body:"Archivo", system-ui, -apple-system, sans-serif;
+  --z:1.1; --u:calc(1vh * var(--z));
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;overflow:hidden;
+  padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+.rays{position:fixed;inset:-50%;z-index:0;pointer-events:none;
+  background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,200,58,.07) 0 8deg, transparent 8deg 20deg);animation:spin 60s linear infinite}
+.glow{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 80% 40% at 50% 32%, rgba(60,110,255,.38), transparent 70%)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.rays{animation:none}*{transition:none!important;animation-duration:.01s!important}}
+.stage{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:12px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* ---------- Réglages ---------- */
+#setup{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding-block:14px 30px;max-width:520px;width:100%;margin:0 auto}
+.logo{text-align:center}
+.logo .k{font-family:var(--f-disp);font-size:clamp(38px,12vw,58px);line-height:.95;color:var(--gold);
+  text-shadow:0 3px 0 var(--gold2),0 6px 0 #a3420c,0 10px 24px rgba(0,0,0,.5);text-wrap:balance}
+.logo .s{margin:10px 0 0;color:var(--mute);font-size:14px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font-family:var(--f-disp);font-size:15px;letter-spacing:.04em;color:var(--gold);font-weight:400}
+.card.auto{border-color:var(--good)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row label{flex:1;min-width:0}
+.row select,.row input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:140px;max-width:48%}
+.field{display:flex;gap:8px}
+.field input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
+.hint{color:var(--mute);font-size:13px;line-height:1.45;margin:0}
+.status{font-weight:800;font-size:14px;margin:0}
+.status.ok{color:var(--good)}.status.ko{color:var(--bad)}
+.big{background:linear-gradient(180deg,var(--gold),var(--gold2));color:var(--dark);font-family:var(--f-disp);font-size:20px;padding:16px;border-radius:16px;box-shadow:0 5px 0 #a3420c}
+.big:active{transform:translateY(3px);box-shadow:0 2px 0 #a3420c}
+.ghost{background:var(--panel);border:1px solid var(--line);padding:10px 14px;font-weight:800}
+.ghost.go{background:var(--good);border-color:var(--good);color:#04260f}
+.switch{appearance:none;width:48px;height:28px;border-radius:20px;background:var(--bg);border:1px solid var(--line);position:relative;cursor:pointer;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--mute);transition:.2s}
+.switch:checked{background:var(--good)}.switch:checked::after{left:23px;background:#fff}
+.hall{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.hall div{display:flex;justify-content:space-between;gap:8px;color:var(--mute)}
+
+/* ---------- Jeu ---------- */
+#game{flex:1;display:flex;flex-direction:column;min-height:0;gap:8px;padding-block:8px}
+.view{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.1);overflow:hidden}
+.safe .view{flex:none;margin-top:9vh;height:52vh}
+.safe #game{padding-block:0}
+.host{flex:none;display:flex;flex-direction:column;gap:8px;background:rgba(7,18,51,.85);border-top:1px solid var(--line);padding-block:10px;overflow-y:auto}
+.safe .host{flex:1;min-height:0;margin-top:auto}
+
+.top{display:flex;align-items:center;gap:calc(var(--u)*.8)}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:calc(var(--u)*.5) calc(var(--u)*1);font-weight:800;font-size:min(calc(var(--u)*1.7),4vw);white-space:nowrap;flex:none}
+.chip.gold{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+.chip.mult{background:var(--bad);border-color:var(--bad);color:#fff}
+.chip.cnt{background:var(--good);border-color:var(--good);color:#04260f}
+.top .sp{flex:1}
+.time{flex:none;font-family:var(--f-disp);font-size:calc(var(--u)*4.2);line-height:1;min-width:2.2ch;text-align:center;font-variant-numeric:tabular-nums;color:var(--gold)}
+.time.hot{color:var(--bad)}
+.bar{height:calc(var(--u)*.9);background:var(--panel);border-radius:6px;overflow:hidden;flex:none}
+.bar>div{height:100%;background:linear-gradient(90deg,var(--good),var(--gold),var(--bad));transition:width .25s linear}
+.scene{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.1);justify-content:flex-start}
+
+.qbox{background:linear-gradient(180deg,var(--panel2),var(--panel));border:3px solid var(--gold);border-radius:20px;padding:calc(var(--u)*1.4) calc(var(--u)*1.2);text-align:center;
+  font-size:min(calc(var(--u)*2.85),calc(6.8vw*var(--z)));font-weight:800;line-height:1.12;text-wrap:balance;box-shadow:0 0 30px rgba(255,200,58,.2)}
+.level{display:block;font-size:calc(var(--u)*1.6);letter-spacing:.12em;color:var(--gold);margin-bottom:calc(var(--u)*.6);font-weight:800}
+.opts{display:grid;grid-template-columns:1fr;gap:calc(var(--u)*.7)}
+.opt{display:flex;align-items:center;gap:calc(var(--u)*.9);background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:calc(var(--u)*.6) calc(var(--u)*.9);
+  font-weight:800;font-size:min(calc(var(--u)*2.6),calc(6vw*var(--z)));min-width:0;line-height:1.1;transition:.3s}
+.opt .L{flex:none;width:calc(var(--u)*3.8);height:calc(var(--u)*3.8);border-radius:50%;display:grid;place-items:center;font-family:var(--f-disp);font-size:calc(var(--u)*2.4);background:var(--bg);color:var(--gold);border:2px solid var(--gold)}
+.opt span:last-child{min-width:0;overflow-wrap:anywhere}
+.revealed .qbox{font-size:min(calc(var(--u)*2.1),calc(5vw*var(--z)));padding:calc(var(--u)*.9)}
+.revealed .opt.dim{display:none}
+.revealed .opt.good{grid-column:1/-1;justify-content:center;background:var(--good);border-color:var(--good);color:#04260f;font-size:min(calc(var(--u)*2.9),calc(6.8vw*var(--z)));padding:calc(var(--u)*.9)}
+.revealed .opt.good .L{background:#fff;color:#04260f;border-color:#fff}
+
+.fast{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
+.fast .ttl{font-family:var(--f-disp);color:var(--gold);font-size:calc(var(--u)*1.8);text-align:center;font-weight:400}
+.fast li.p{display:flex;align-items:center;gap:calc(var(--u)*1);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:calc(var(--u)*.35) calc(var(--u)*1.1);min-width:0}
+.fast li.p b{flex:1;min-width:0;font-size:calc(var(--u)*2.1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fast li.p i{font-style:normal;font-family:var(--f-disp);color:var(--gold);font-size:calc(var(--u)*2)}
+.fast li.p em{font-style:normal;font-weight:800;color:var(--gold);font-size:calc(var(--u)*2);font-variant-numeric:tabular-nums}
+.fast li.p:first-of-type{background:var(--gold);border-color:var(--gold);color:var(--dark)}
+.fast li.p:first-of-type i,.fast li.p:first-of-type em{color:var(--dark)}
+.fast .none{text-align:center;font-weight:800;font-size:calc(var(--u)*2.4)}
+.stat{text-align:center;font-weight:800;color:var(--mute);font-size:calc(var(--u)*1.7);margin:0}
+
+.center{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*1.1);text-align:center;justify-content:center;flex:1}
+.center h2{margin:0;font-family:var(--f-disp);font-size:min(calc(var(--u)*4.6),calc(10vw*var(--z)));color:var(--gold);font-weight:400;line-height:1.02;text-wrap:balance}
+.lead{font-weight:800;font-size:min(calc(var(--u)*2.6),calc(6vw*var(--z)));line-height:1.3;margin:0}
+.ball{width:calc(var(--u)*14);height:calc(var(--u)*14);border-radius:50%;display:grid;place-items:center;font-family:var(--f-disp);font-size:calc(var(--u)*6.5);color:var(--dark);
+  background:radial-gradient(circle at 35% 30%,#fff7d1,var(--gold) 45%,var(--gold2) 100%);box-shadow:inset -6px -8px 14px rgba(120,40,0,.35),0 8px 24px rgba(0,0,0,.45)}
+
+/* Coffre */
+.chest{width:calc(var(--u)*15);height:calc(var(--u)*11);position:relative;margin-top:calc(var(--u)*2.5);flex:none}
+.chest .body{position:absolute;bottom:0;left:0;right:0;height:62%;border-radius:6px 6px 12px 12px;background:linear-gradient(180deg,#8a4a1a,#5c2d0c);border:4px solid var(--gold2)}
+.chest .body::before{content:"";position:absolute;left:50%;top:-4px;width:18%;height:45%;margin-left:-9%;background:var(--gold);border-radius:4px;box-shadow:inset 0 -8px 0 var(--gold2)}
+.chest .lid{position:absolute;top:0;left:0;right:0;height:40%;border-radius:40px 40px 6px 6px;background:linear-gradient(180deg,#a65a22,#7a3d12);border:4px solid var(--gold2);transform-origin:50% 100%;transition:transform .8s cubic-bezier(.3,1.6,.5,1)}
+.chest.open .lid{transform:translateY(-40%) rotate(-28deg)}
+.chest .shine{position:absolute;left:50%;bottom:55%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--gold);opacity:0;transition:.6s}
+.chest.open .shine{opacity:1;box-shadow:0 0 70px 60px rgba(255,200,58,.55)}
+.chest.locked{animation:wob 2.4s ease-in-out infinite}
+@keyframes wob{0%,80%,100%{transform:rotate(0)}85%{transform:rotate(-4deg)}90%{transform:rotate(4deg)}95%{transform:rotate(-2deg)}}
+.coins{font-family:var(--f-disp);font-size:calc(var(--u)*5);line-height:1;font-variant-numeric:tabular-nums}
+.coins small{font-size:.42em;color:var(--mute)}
+.center .bar{width:100%;height:calc(var(--u)*2)}
+.center .bar>div{background:linear-gradient(90deg,var(--gold2),var(--gold))}
+.bonus{background:var(--gold);color:var(--dark);border-radius:16px;padding:calc(var(--u)*1.4);font-weight:800;width:100%;font-size:calc(var(--u)*2.2)}
+.bonus b{display:block;font-family:var(--f-disp);font-size:calc(var(--u)*3.4);font-weight:400}
+
+/* Récap & final */
+.recap{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:calc(var(--u)*.7)}
+.recap li{display:flex;align-items:center;gap:calc(var(--u)*1.2);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:calc(var(--u)*.9) calc(var(--u)*1.3);min-width:0}
+.recap li b{flex:1;min-width:0;text-align:left;font-size:calc(var(--u)*2.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recap .rk{flex:none;width:calc(var(--u)*4.4);height:calc(var(--u)*4.4);border-radius:50%;display:grid;place-items:center;font-family:var(--f-disp);font-size:calc(var(--u)*2.2);background:var(--bg);color:var(--gold);border:2px solid var(--gold)}
+.recap .pt{font-weight:800;color:var(--gold);font-size:calc(var(--u)*2.2);font-variant-numeric:tabular-nums}
+.recap li.r1{background:var(--gold);border-color:var(--gold);color:var(--dark)}
+.recap li.r1 .pt{color:var(--dark)}.recap li.r1 .rk{background:var(--dark)}
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:8px;width:100%}
+.pod{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.pod .n{font-weight:800;font-size:calc(var(--u)*2.2);overflow-wrap:anywhere}
+.pod .p{font-size:calc(var(--u)*1.7);color:var(--mute);font-variant-numeric:tabular-nums}
+.pod .blk{width:100%;border-radius:10px 10px 0 0;display:grid;place-items:center;font-family:var(--f-disp);font-size:calc(var(--u)*3.6);color:var(--dark)}
+.pod.g1 .blk{height:calc(var(--u)*14);background:var(--gold)}.pod.g2 .blk{height:calc(var(--u)*10);background:#d9e1f7}.pod.g3 .blk{height:calc(var(--u)*7);background:#e09a5e}
+
+/* Régie (zone hôte) */
+.hrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hrow button{flex:1;background:var(--panel);border:1px solid var(--line);padding:9px 6px;font-size:13px;font-weight:800;white-space:nowrap}
+.hrow button.on{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+.hstat{font-size:12px;font-weight:800;color:var(--mute);display:flex;gap:10px;flex-wrap:wrap}
+.hstat .ok{color:var(--good)}.hstat .ko{color:var(--bad)}
+.hin{display:flex;align-items:center;gap:6px}
+.hin b{width:30px;flex:none;font-size:13px;color:var(--gold)}
+.hin input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:15px}
+.hin em{font-style:normal;color:var(--mute);font-size:12px;width:48px;text-align:right}
+.coinbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.coinbtns button{background:var(--panel2);border:1px solid var(--gold2);padding:10px 4px;font-weight:800;color:var(--gold)}
+.htitle{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--gold);display:flex;justify-content:space-between}
+
+.gtoast{position:fixed;left:50%;top:calc(9.5vh + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:20;background:var(--gold);color:var(--dark);font-weight:800;
+  padding:8px 14px;border-radius:999px;font-size:calc(var(--u)*1.9);white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;animation:gt 2.6s ease forwards}
+@keyframes gt{0%{opacity:0;transform:translate(-50%,-10px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:800;z-index:20;max-width:90%}
+.pop{animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(.8);opacity:0}70%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+</style>
+
+<div class="rays"></div><div class="glow"></div>
+<div class="stage" id="stage">
+
+  <!-- RÉGLAGES -->
+  <section id="setup">
+    <div class="logo">
+      <div class="k">LE GRAND<br>JACKPOT</div>
+      <p class="s">Le jeu de questions du live · réponds A, B, C ou D dans le chat</p>
+    </div>
+
+    <div class="card auto" id="autocard">
+      <h2>MODE AUTOMATIQUE</h2>
+      <div id="autoOn" hidden>
+        <p class="hint" style="margin-bottom:10px">Lance d'abord ton live TikTok, puis connecte le jeu. Les réponses du chat et les cadeaux seront comptés tout seuls.</p>
+        <div class="field"><input id="tt" placeholder="Ton pseudo TikTok (sans @)" autocomplete="off" autocapitalize="off"><button class="ghost go" id="ttGo">Connecter</button></div>
+        <p class="status" id="ttStat" style="margin-top:10px"></p>
+      </div>
+      <p class="hint" id="autoOff">Le mode automatique marche quand le jeu est ouvert depuis ton serveur (lien Render). Ici, tu notes les plus rapides toi-même.</p>
+    </div>
+
+    <button class="big" id="go">▶ LANCER LE JEU</button>
+
+    <div class="card">
+      <h2>AFFICHAGE</h2>
+      <div class="row"><label for="zf">Taille</label>
+        <select id="zf"><option value="0.95">Normal</option><option value="1.1" selected>Grand</option><option value="1.25">Géant</option></select></div>
+      <div class="row"><label for="safe">Laisser la place à l'interface TikTok (haut et commentaires)</label><input type="checkbox" class="switch" id="safe" checked></div>
+    </div>
+
+    <div class="card">
+      <h2>LA PARTIE</h2>
+      <div class="row"><label for="nq">Nombre de questions</label>
+        <select id="nq"><option>10</option><option>20</option><option>30</option><option selected>40</option></select></div>
+      <div class="row"><label for="tq">Temps pour répondre</label>
+        <select id="tq"><option value="15">15 secondes</option><option value="20" selected>20 secondes</option><option value="30">30 secondes</option></select></div>
+      <div class="row"><label for="auto">Enchaîner tout seul</label><input type="checkbox" class="switch" id="auto" checked></div>
+      <div class="row"><label for="rd">Temps pour noter les plus rapides (mode manuel)</label>
+        <select id="rd"><option value="10">10 s</option><option value="15" selected>15 s</option><option value="25">25 s</option></select></div>
+    </div>
+
+    <div class="card">
+      <h2>LES COFFRES</h2>
+      <div class="row"><label for="ce">Un coffre toutes les</label>
+        <select id="ce"><option value="0">Jamais</option><option value="4">4 questions</option><option value="5" selected>5 questions</option><option value="8">8 questions</option><option value="10">10 questions</option></select></div>
+      <div class="row"><label for="cg">Pièces pour le 1er coffre</label><input type="number" id="cg" value="20" min="1"></div>
+      <div class="row"><label for="cs">+ pièces à chaque coffre</label><input type="number" id="cs" value="10" min="0"></div>
+      <div class="row"><label for="cw">Attente max d'un coffre</label>
+        <select id="cw"><option value="60">1 min</option><option value="90" selected>1 min 30</option><option value="180">3 min</option><option value="0">Illimitée</option></select></div>
+      <p class="hint">En mode automatique, chaque pièce offerte en cadeau remplit le coffre. Les cadeaux reçus entre deux coffres sont gardés pour le suivant.</p>
+    </div>
+
+    <div class="card">
+      <h2>LA VOIX</h2>
+      <div class="row"><label for="von">Voix du présentateur</label><input type="checkbox" class="switch" id="von" checked></div>
+      <div class="row"><label for="vv">Voix</label><select id="vv"><option value="">Automatique</option></select></div>
+      <div class="row"><label for="vr">Débit</label>
+        <select id="vr"><option value="0.95">Posé</option><option value="1.05" selected>Normal</option><option value="1.2">Rapide</option></select></div>
+      <div class="row"><label for="gv">Remercier les cadeaux à voix haute</label><input type="checkbox" class="switch" id="gv" checked></div>
+      <button class="ghost" id="vtest">🔊 Tester la voix</button>
+      <p class="hint" id="vdiag" aria-live="polite"></p>
+    </div>
+
+    <div class="card">
+      <h2>LES RÈGLES</h2>
+      <p class="hint">Seule la première réponse de chaque spectateur compte. Les 5 plus rapides à avoir la bonne réponse marquent : 100 %, 80 %, 60 %, 40 % et 20 % des points. Paliers : 100, 200, 300 puis 500 points. Classement toutes les 5 questions. 120 questions (moyen, difficile, expert), sans répétition d'une manche à l'autre.</p>
+    </div>
+
+    <div class="card">
+      <h2>LES CHAMPIONS</h2>
+      <div class="hall" id="hall"></div>
+    </div>
+  </section>
+
+  <!-- JEU -->
+  <section id="game" hidden>
+    <div class="view" id="view">
+      <div class="top">
+        <span class="chip" id="hQ">Q 1/40</span>
+        <span class="chip gold" id="hPts">100 PTS</span>
+        <span class="chip mult" id="hMult" hidden>×2</span>
+        <span class="chip cnt" id="hCnt" hidden>💬 0</span>
+        <span class="sp"></span>
+        <span class="time" id="hTime"></span>
+      </div>
+      <div class="bar" id="tBarWrap"><div id="tBar" style="width:100%"></div></div>
+      <div class="scene" id="scene"></div>
+    </div>
+    <div class="host" id="host">
+      <div class="hstat"><span id="hsLive"></span><span id="hsRound"></span><span id="hsBank"></span></div>
+      <div id="hostPanel"></div>
+      <div class="hrow">
+        <button id="bPause">⏸ Pause</button>
+        <button id="bNext">⏭ Suivant</button>
+        <button id="bVoice" class="on">🔊 Voix</button>
+        <button id="bFull">⛶</button>
+        <button id="bMenu">☰ Menu</button>
+      </div>
+    </div>
+  </section>
+</div>
+<datalist id="plist"></datalist>
+
+<script>
+/* ======================= QUESTIONS =======================
+   [question, bonne réponse, mauvaise 1, mauvaise 2, mauvaise 3] */
+const BANK = {
+ m: [
+  ["Quelle est la capitale de l'Australie ?","Canberra","Sydney","Melbourne","Perth"],
+  ["Quel est le plus long fleuve de France ?","La Loire","La Seine","Le Rhône","La Garonne"],
+  ["En quelle année est tombé le mur de Berlin ?","1989","1991","1987","1993"],
+  ["Quel organe produit l'insuline ?","Le pancréas","Le foie","La rate","Les reins"],
+  ["Combien d'os compte le squelette d'un adulte ?","206","186","226","212"],
+  ["Quelle est la capitale du Canada ?","Ottawa","Toronto","Montréal","Québec"],
+  ["Qui a composé « Les Quatre Saisons » ?","Vivaldi","Bach","Mozart","Haendel"],
+  ["Quel métal est liquide à température ambiante ?","Le mercure","Le plomb","L'étain","Le zinc"],
+  ["Quel est le symbole chimique du potassium ?","K","P","Po","Pt"],
+  ["Quel est le plus petit pays du monde ?","Le Vatican","Monaco","Nauru","Saint-Marin"],
+  ["Qui a écrit « L'Étranger » ?","Albert Camus","Jean-Paul Sartre","André Gide","André Malraux"],
+  ["Quelle est la capitale de la Turquie ?","Ankara","Istanbul","Izmir","Bursa"],
+  ["En quelle année le Titanic a-t-il coulé ?","1912","1910","1914","1921"],
+  ["Quel gaz est le plus présent dans l'air ?","L'azote","L'oxygène","L'argon","Le CO2"],
+  ["Quelle est l'unité de la résistance électrique ?","L'ohm","Le watt","Le volt","L'ampère"],
+  ["Qui a peint « Guernica » ?","Picasso","Dalí","Miró","Goya"],
+  ["Quel est le plus grand désert chaud du monde ?","Le Sahara","Le Kalahari","Le désert d'Arabie","L'Atacama"],
+  ["Combien de chromosomes a une cellule humaine ?","46","23","44","48"],
+  ["Qui fut le premier président de la Ve République ?","Charles de Gaulle","René Coty","Georges Pompidou","Vincent Auriol"],
+  ["Dans quelle ville est né Mozart ?","Salzbourg","Vienne","Munich","Prague"],
+  ["Quelle est la capitale du Maroc ?","Rabat","Casablanca","Marrakech","Fès"],
+  ["Quel est le plus grand organe du corps humain ?","La peau","Le foie","L'intestin grêle","Les poumons"],
+  ["Quelle est la racine carrée de 144 ?","12","14","11","16"],
+  ["En quelle année a eu lieu la bataille de Marignan ?","1515","1415","1615","1492"],
+  ["Quelle planète a le plus de lunes connues ?","Saturne","Jupiter","Uranus","Neptune"],
+  ["Quel pays a gagné la Coupe du monde de foot 2022 ?","L'Argentine","La France","La Croatie","Le Maroc"],
+  ["Qui a écrit « Germinal » ?","Émile Zola","Victor Hugo","Balzac","Flaubert"],
+  ["Quelle est la capitale de la Norvège ?","Oslo","Bergen","Stockholm","Copenhague"],
+  ["Combien de cœurs possède une pieuvre ?","3","1","2","8"],
+  ["Quel est l'os le plus long du corps humain ?","Le fémur","Le tibia","L'humérus","Le radius"],
+  ["Quel fleuve traverse Vienne, Budapest et Belgrade ?","Le Danube","Le Rhin","L'Elbe","La Vistule"],
+  ["Qui a mis au point le vaccin contre la rage ?","Louis Pasteur","Robert Koch","Edward Jenner","Alexander Fleming"],
+  ["En quelle année les pièces et billets en euros sont-ils arrivés en France ?","2002","1999","2001","2000"],
+  ["Quelle est la capitale de l'Égypte ?","Le Caire","Alexandrie","Louxor","Gizeh"],
+  ["Combien de points vaut un essai au rugby à XV ?","5","3","4","7"],
+  ["Quel est le plus petit océan du monde ?","L'Arctique","L'océan Austral","L'océan Indien","L'Atlantique"],
+  ["Qui a énoncé la loi de la gravitation universelle ?","Isaac Newton","Galilée","Kepler","Einstein"],
+  ["Quel est le symbole chimique de l'argent ?","Ag","Au","Ar","Al"],
+  ["Combien de côtés a un dodécagone ?","12","10","20","11"],
+  ["Quel détroit sépare l'Espagne du Maroc ?","Gibraltar","Le Bosphore","Messine","Ormuz"]
+ ],
+ h: [
+  ["Quelle est la capitale du Kazakhstan ?","Astana","Almaty","Bichkek","Tachkent"],
+  ["Quel est l'élément le plus abondant dans l'univers ?","L'hydrogène","L'hélium","L'oxygène","Le carbone"],
+  ["En quelle année Napoléon Ier est-il mort ?","1821","1815","1832","1840"],
+  ["Quel est le numéro atomique du carbone ?","6","12","8","14"],
+  ["Qui a découvert la pénicilline ?","Alexander Fleming","Louis Pasteur","Robert Koch","Marie Curie"],
+  ["Quel pays a le plus de fuseaux horaires, territoires compris ?","La France","La Russie","Les États-Unis","Le Royaume-Uni"],
+  ["Quel est le plus petit os du corps humain ?","L'étrier","L'enclume","Le marteau","Le coccyx"],
+  ["Quelle est la capitale de la Nouvelle-Zélande ?","Wellington","Auckland","Christchurch","Hamilton"],
+  ["En quelle année a été signé le traité de Rome créant la CEE ?","1957","1951","1962","1992"],
+  ["Quel savant a donné son nom à l'unité de fréquence ?","Hertz","Volta","Ampère","Faraday"],
+  ["Quel écrivain a créé Arsène Lupin ?","Maurice Leblanc","Gaston Leroux","Georges Simenon","Conan Doyle"],
+  ["Quelle planète tourne le plus lentement sur elle-même ?","Vénus","Mercure","Mars","Neptune"],
+  ["Quel fleuve traverse Bagdad ?","Le Tigre","L'Euphrate","Le Jourdain","Le Nil"],
+  ["Comment s'appelle le point le plus profond des océans ?","La fosse des Mariannes","La fosse des Tonga","La fosse des Kermadec","La fosse de Porto Rico"],
+  ["Combien de faces possède un icosaèdre ?","20","12","24","30"],
+  ["Quel gaz compose surtout l'atmosphère de Mars ?","Le dioxyde de carbone","L'azote","L'argon","Le méthane"],
+  ["Quelle langue est la plus parlée en Suisse ?","L'allemand","Le français","L'italien","L'anglais"],
+  ["Quelle est l'unité de la quantité de matière ?","La mole","Le kelvin","La candela","Le becquerel"],
+  ["Quel pays a inventé le papier ?","La Chine","L'Égypte","Le Japon","L'Inde"],
+  ["Qui a écrit « Le Rouge et le Noir » ?","Stendhal","Balzac","Flaubert","Maupassant"],
+  ["Quelle est la capitale de la Mongolie ?","Oulan-Bator","Astana","Bichkek","Lhassa"],
+  ["Quel est le plus haut sommet d'Afrique ?","Le Kilimandjaro","Le mont Kenya","Le Ruwenzori","Le Toubkal"],
+  ["En quelle année a eu lieu la bataille d'Hastings ?","1066","1086","1106","1215"],
+  ["Qui a découvert la radioactivité naturelle en 1896 ?","Henri Becquerel","Pierre Curie","Ernest Rutherford","Wilhelm Röntgen"],
+  ["Quelle vitamine la peau fabrique-t-elle au soleil ?","La vitamine D","La vitamine C","La vitamine A","La vitamine B12"],
+  ["Combien de pays compte l'Union européenne ?","27","28","25","30"],
+  ["Quelle est la capitale du Vietnam ?","Hanoï","Hô Chi Minh-Ville","Hué","Da Nang"],
+  ["Qui a peint « La Liberté guidant le peuple » ?","Delacroix","David","Géricault","Courbet"],
+  ["En quelle année Christophe Colomb a-t-il atteint l'Amérique ?","1492","1498","1488","1504"],
+  ["Quel est le plus long fleuve d'Europe ?","La Volga","Le Danube","Le Rhin","Le Dniepr"],
+  ["Qui a composé « Le Boléro » ?","Maurice Ravel","Claude Debussy","Erik Satie","Georges Bizet"],
+  ["Combien de temps met la Lune pour faire le tour de la Terre ?","Environ 27 jours","Environ 14 jours","Environ 40 jours","Environ 60 jours"],
+  ["Quel est le symbole chimique du tungstène ?","W","Tu","Tg","Wo"],
+  ["Quelle ville s'appelait Lutèce dans l'Antiquité ?","Paris","Lyon","Reims","Lille"],
+  ["Quelle mer n'a aucune côte ?","La mer des Sargasses","La mer Morte","La mer d'Aral","La mer Caspienne"],
+  ["Quel savant a donné son nom à l'unité de force ?","Newton","Pascal","Joule","Watt"],
+  ["Quelle est la capitale du Pérou ?","Lima","Cuzco","Quito","La Paz"],
+  ["Combien de symphonies Beethoven a-t-il composées ?","9","7","12","5"],
+  ["Qui a écrit « Candide » ?","Voltaire","Rousseau","Diderot","Montesquieu"],
+  ["En quelle année a eu lieu le premier vol des frères Wright ?","1903","1895","1911","1899"]
+ ],
+ x: [
+  ["Quelle est la capitale du Burkina Faso ?","Ouagadougou","Bamako","Niamey","Bobo-Dioulasso"],
+  ["Quel élément chimique a pour symbole Sn ?","L'étain","Le soufre","Le sodium","Le strontium"],
+  ["En quelle année a été signé l'édit de Nantes ?","1598","1685","1572","1610"],
+  ["Combien de touches noires sur un piano de 88 touches ?","36","52","32","40"],
+  ["Quelle est la capitale du Bhoutan ?","Thimphou","Katmandou","Dacca","Lhassa"],
+  ["Qui a démontré le dernier théorème de Fermat ?","Andrew Wiles","Grigori Perelman","Pierre de Fermat","Alan Turing"],
+  ["Qui a écrit « À la recherche du temps perdu » ?","Marcel Proust","André Gide","Céline","Colette"],
+  ["En quelle année est mort Louis XIV ?","1715","1710","1723","1643"],
+  ["Quel est le plus grand satellite du système solaire ?","Ganymède","Titan","Callisto","La Lune"],
+  ["Combien de pièces y a-t-il au début d'une partie d'échecs ?","32","16","24","36"],
+  ["Quel est le pays le plus peuplé d'Afrique ?","Le Nigeria","L'Éthiopie","L'Égypte","La RD Congo"],
+  ["Qui a peint « Le Radeau de la Méduse » ?","Géricault","Delacroix","David","Ingres"],
+  ["Quelle est la valeur approchée du nombre d'Avogadro ?","6,02 × 10²³","3 × 10⁸","9,81","1,6 × 10⁻¹⁹"],
+  ["Quelle est la capitale de la Slovénie ?","Ljubljana","Zagreb","Bratislava","Maribor"],
+  ["En quelle année a eu lieu la bataille d'Austerlitz ?","1805","1812","1798","1815"],
+  ["Quelle partie de la cellule produit son énergie ?","La mitochondrie","Le ribosome","L'appareil de Golgi","Le noyau"],
+  ["Quel est le plus haut sommet d'Amérique du Sud ?","L'Aconcagua","Le Chimborazo","Le Huascarán","L'Ojos del Salado"],
+  ["Qui a composé « La Flûte enchantée » ?","Mozart","Haydn","Wagner","Verdi"],
+  ["Qui a écrit « Ainsi parlait Zarathoustra » ?","Nietzsche","Kant","Hegel","Schopenhauer"],
+  ["Combien de litres contient un mètre cube ?","1 000","100","10 000","10"],
+  ["Quelle est la capitale de la Birmanie (Myanmar) ?","Naypyidaw","Rangoun","Mandalay","Vientiane"],
+  ["Qui a créé le tableau périodique des éléments ?","Mendeleïev","Lavoisier","Dalton","Niels Bohr"],
+  ["En quelle année Jeanne d'Arc a-t-elle été brûlée ?","1431","1429","1453","1415"],
+  ["Quel est le symbole chimique du sodium ?","Na","So","Sd","S"],
+  ["Combien de pays le Danube traverse-t-il ?","10","6","8","12"],
+  ["Quel écrivain a créé le commissaire Maigret ?","Georges Simenon","Agatha Christie","Maurice Leblanc","Charles Exbrayat"],
+  ["Quelle vitesse faut-il pour échapper à l'attraction terrestre ?","Environ 11,2 km/s","Environ 3 km/s","Environ 30 km/s","Environ 300 km/s"],
+  ["En quelle année l'esclavage a-t-il été définitivement aboli en France ?","1848","1794","1815","1870"],
+  ["Quel est le plus grand lac d'Amérique du Nord ?","Le lac Supérieur","Le lac Michigan","Le lac Huron","Le lac Érié"],
+  ["Qui a réalisé le film « Le Voyage dans la Lune » (1902) ?","Georges Méliès","Les frères Lumière","Abel Gance","Charlie Chaplin"],
+  ["Combien de dents a un adulte avec ses dents de sagesse ?","32","28","30","36"],
+  ["Quelle est la capitale de l'Équateur ?","Quito","Guayaquil","Bogota","Lima"],
+  ["Quel roi a fait construire le château de Chambord ?","François Ier","Louis XIV","Henri IV","Louis XII"],
+  ["Quelle particule a une charge électrique négative ?","L'électron","Le proton","Le neutron","Le photon"],
+  ["Quel pays a donné le droit de vote aux femmes le premier, en 1893 ?","La Nouvelle-Zélande","La Finlande","La Norvège","L'Australie"],
+  ["Quel est le plus long fleuve d'Asie ?","Le Yangtsé","Le Mékong","Le Gange","Le fleuve Jaune"],
+  ["Quelle est la distance exacte d'un marathon ?","42,195 km","40 km","42 km","45,5 km"],
+  ["Quelle est la capitale de la Jamaïque ?","Kingston","Montego Bay","Port-au-Prince","Nassau"],
+  ["Qui a écrit « Les Fleurs du mal » ?","Baudelaire","Rimbaud","Verlaine","Mallarmé"],
+  ["Quel métal conduit le mieux l'électricité ?","L'argent","Le cuivre","L'or","L'aluminium"]
+ ]
+};
+const LV = {m:"MOYEN", h:"DIFFICILE", x:"EXPERT"};
+const LETTERS = ["A","B","C","D"];
+const SHARE = [1, .8, .6, .4, .2];
+const BONUSES = [
+  {id:"x2", t:"POINTS ×2", d:"La prochaine question rapporte double !", v:"Bonus points fois deux ! La prochaine question rapporte double !"},
+  {id:"eclair", t:"QUESTION ÉCLAIR", d:"10 secondes seulement, points ×3 !", v:"Question éclair ! Dix secondes seulement, et les points sont multipliés par trois !"},
+  {id:"donor", t:"+500 AU DONATEUR", d:"Le plus gros donateur gagne 500 points.", v:"Cinq cents points offerts au plus gros donateur !"}
+];
+const SERVER = !!window.JACKPOT_SERVER;
+
+/* ======================= OUTILS ======================= */
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("gj_"+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("gj_"+k, JSON.stringify(v)); }catch(e){} }
+};
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const fmt = n => n.toLocaleString("fr-FR");
+function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),1800); }
+function gtoast(t){ const d=document.createElement("div"); d.className="gtoast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),2700); }
+
+/* ======================= SONS ======================= */
+let AC = null;
+function audio(){ try{ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume(); }catch(e){} return AC; }
+function beep(f, d=.12, type="square", vol=.08, at=0){
+  const ac = audio(); if(!ac) return;
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t+d);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+d+.02);
+}
+const sfx = {
+  tick(){ beep(880,.06,"square",.05); },
+  fanfare(){ [523,659,784,1047].forEach((f,i)=>beep(f,.22,"triangle",.12,i*.11)); },
+  coin(){ beep(988,.07,"square",.06); beep(1319,.15,"square",.06,.07); },
+  open(){ [392,523,659,784,1047,1319].forEach((f,i)=>beep(f,.25,"triangle",.12,i*.08)); },
+  sad(){ [392,330,262].forEach((f,i)=>beep(f,.3,"sawtooth",.06,i*.2)); }
+};
+
+/* ======================= VOIX ======================= */
+let voices = [];
+function loadVoices(){
+  try{
+    voices = speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang));
+    const sel = $("#vv"), cur = sel.value || (store.get("settings",{}).vv || "");
+    sel.innerHTML = '<option value="">Automatique</option>' + voices.map(v=>`<option value="${esc(v.name)}">${esc(v.name)}</option>`).join("");
+    sel.value = voices.some(v=>v.name===cur) ? cur : "";
+  }catch(e){}
+}
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function chooseVoice(){
+  const name = $("#vv").value;
+  return voices.find(v=>v.name===name) || voices.find(v=>/google/i.test(v.name)) || voices.find(v=>/fr-FR/i.test(v.lang)) || voices[0] || null;
+}
+function speak(text){
+  return new Promise(res => {
+    if(!S.voice || !("speechSynthesis" in window)){ setTimeout(res, 400); return; }
+    try{
+      if(speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      try{ speechSynthesis.resume(); }catch(e){}
+      const u = new SpeechSynthesisUtterance(text);
+      const v = chooseVoice(); if(v){ u.voice = v; u.lang = v.lang; } else u.lang = "fr-FR";
+      u.rate = parseFloat($("#vr").value) || 1.05; u.pitch = 1.05;
+      let done = false; const fin = () => { if(!done){ done = true; res(); } };
+      u.onend = fin; u.onerror = fin;
+      setTimeout(fin, 1500 + text.length * 85 / u.rate);
+      speechSynthesis.speak(u);
+    }catch(e){ res(); }
+  });
+}
+function hush(){ try{ speechSynthesis.cancel(); }catch(e){} }
+
+/* ======================= ÉTAT ======================= */
+const S = {
+  round: store.get("round", 0), qs: [], qi: 0, players: {}, mult: 1, eclair: false,
+  voice: true, paused: false, skip: false, run: 0, chestNo: 0,
+  live: false, answers: new Map(), accepting: false,
+  bank: 0, donors: {}, chest: null, speaking: false, giftQueue: []
+};
+let CFG = null;
+const SET = () => ({
+  nq: +$("#nq").value, tq: +$("#tq").value, auto: $("#auto").checked, rd: +$("#rd").value,
+  ce: +$("#ce").value, cg: Math.max(1, +$("#cg").value||20), cs: Math.max(0, +$("#cs").value||0), cw: +$("#cw").value,
+  gv: $("#gv").checked
+});
+const KEYS = ["nq","tq","auto","rd","ce","cg","cs","cw","von","vv","vr","zf","safe","tt","gv"];
+(function restore(){
+  const s = store.get("settings", null); if(!s) return;
+  for(const [k,v] of Object.entries(s)){ const el = $("#"+k); if(!el || !KEYS.includes(k)) continue; if(el.type==="checkbox") el.checked = v; else el.value = v; }
+})();
+function saveSettings(){
+  const o = {}; KEYS.forEach(k => { const el=$("#"+k); if(el) o[k] = el.type==="checkbox" ? el.checked : el.value; });
+  store.set("settings", o);
+}
+function applyLook(){
+  document.documentElement.style.setProperty("--z", $("#zf").value);
+  $("#stage").classList.toggle("safe", $("#safe").checked);
+}
+
+function pickQuestions(n){
+  const used = store.get("used2", {m:[],h:[],x:[]});
+  const counts = {m: Math.round(n*.3), h: Math.round(n*.4)}; counts.x = n - counts.m - counts.h;
+  const out = [];
+  for(const lv of ["m","h","x"]){
+    let free = BANK[lv].map((_,i)=>i).filter(i => !used[lv].includes(i));
+    if(free.length < counts[lv]){ used[lv] = []; free = BANK[lv].map((_,i)=>i); }
+    shuffle(free).slice(0, counts[lv]).forEach(i => { used[lv].push(i); out.push({lv, raw: BANK[lv][i]}); });
+  }
+  store.set("used2", used);
+  return out.map(q => {
+    const opts = shuffle([{t:q.raw[1], ok:true}, ...q.raw.slice(2).map(t=>({t, ok:false}))]);
+    return {lv: q.lv, q: q.raw[0], opts, good: opts.findIndex(o=>o.ok)};
+  });
+}
+const tierPts = i => { const r = i / CFG.nq; return r < .25 ? 100 : r < .5 ? 200 : r < .75 ? 300 : 500; };
+
+/* ======================= LIAISON TIKTOK (serveur) ======================= */
+let WS = null, wsWanted = false;
+function setLiveStatus(ok, msg){
+  S.live = ok;
+  const st = $("#ttStat"); st.textContent = (ok ? "🟢 " : "🔴 ") + msg; st.className = "status " + (ok ? "ok" : "ko");
+  hostStatus();
+}
+function wsOpen(){
+  if(!SERVER) return;
+  try{
+    WS = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+    WS.onopen = () => { if(wsWanted) wsSend({t:"connect", username: $("#tt").value}); };
+    WS.onmessage = e => { let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if(m.t === "status") setLiveStatus(m.ok, m.msg);
+      if(m.t === "chat") onChat(m);
+      if(m.t === "gift") onGift(m);
+    };
+    WS.onclose = () => { if(S.live) setLiveStatus(false, "Connexion au serveur perdue, reconnexion…"); setTimeout(wsOpen, 3000); };
+  }catch(e){}
+}
+function wsSend(o){ try{ if(WS && WS.readyState === 1) WS.send(JSON.stringify(o)); }catch(e){} }
+function liveConnect(){
+  const u = $("#tt").value.trim().replace(/^@/, "");
+  if(!u){ setLiveStatus(false, "Écris ton pseudo TikTok"); return; }
+  $("#tt").value = u; saveSettings(); wsWanted = true;
+  setLiveStatus(false, "Connexion au live de @" + u + "…");
+  if(WS && WS.readyState === 1) wsSend({t:"connect", username:u});
+}
+if(SERVER){
+  $("#autoOn").hidden = false; $("#autoOff").hidden = true;
+  wsOpen();
+  setInterval(() => { fetch("/health").catch(()=>{}); }, 240000);   // garde le serveur gratuit éveillé
+}
+
+function onChat(m){
+  if(!S.accepting) return;
+  const r = String(m.text||"").trim().match(/^(?:r[ée]p(?:onse)?\s*:?\s*)?([abcd])[\s!.?]*$/i);
+  if(!r || S.answers.has(m.id)) return;
+  S.answers.set(m.id, {l: r[1].toUpperCase(), t: performance.now(), nick: m.nick || m.id});
+  const c = $("#hCnt"); c.hidden = false; c.textContent = "💬 " + S.answers.size;
+}
+function onGift(m){
+  const n = Math.max(1, +m.diamonds || 1), who = m.nick || m.id || "Quelqu'un";
+  S.donors[who] = (S.donors[who]||0) + n;
+  sfx.coin(); gtoast(`🎁 ${who} : +${n} pièce${n>1?"s":""}`);
+  if(S.chest && !S.chest.opened) addCoins(n);
+  else { S.bank += n; hostStatus(); }
+  if(CFG && CFG.gv && !S.speaking && n >= 1){ S.giftQueue.push(who); }
+}
+function topDonor(){ const e = Object.entries(S.donors).sort((a,b)=>b[1]-a[1]); return e[0] ? e[0][0] : ""; }
+
+/* ======================= ATTENTES ======================= */
+class Abort extends Error{}
+function wait(ms, onTick){
+  const id = S.run;
+  return new Promise((res, rej) => {
+    let left = ms, last = performance.now();
+    const t = setInterval(() => {
+      if(id !== S.run){ clearInterval(t); rej(new Abort()); return; }
+      const now = performance.now(); if(!S.paused) left -= now - last; last = now;
+      if(onTick) onTick(left);
+      if(S.skip){ S.skip = false; clearInterval(t); hush(); res("skip"); return; }
+      if(left <= 0){ clearInterval(t); res(); }
+    }, 100);
+  });
+}
+async function say(text){
+  const id = S.run; S.speaking = true; await speak(text); S.speaking = false;
+  if(id !== S.run) throw new Abort();
+  while(S.paused){ await wait(200); }
+}
+async function thankGifts(){
+  if(!S.giftQueue.length) return;
+  const names = [...new Set(S.giftQueue)].slice(0,3); S.giftQueue = [];
+  await say("Merci pour les cadeaux, " + names.join(", ") + " !");
+}
+
+/* ======================= AFFICHAGE ======================= */
+const scene = () => $("#scene");
+const panel = () => $("#hostPanel");
+function setScene(html, cls=""){ scene().className = "scene " + cls; scene().innerHTML = html; }
+function header(){
+  $("#hQ").textContent = "Q " + Math.min(S.qi+1, CFG.nq) + "/" + CFG.nq;
+  $("#hPts").textContent = tierPts(Math.min(S.qi, CFG.nq-1)) * S.mult * (S.eclair?3:1) + " PTS";
+  $("#hMult").hidden = S.mult === 1 && !S.eclair; $("#hMult").textContent = S.eclair ? "⚡×3" : "×" + S.mult;
+}
+function timerUI(show){ $("#hTime").textContent = ""; $("#tBarWrap").hidden = !show; $("#hCnt").hidden = true; }
+function hostStatus(){
+  $("#hsLive").innerHTML = SERVER ? (S.live ? '<span class="ok">🟢 Live connecté</span>' : '<span class="ko">🔴 Live non connecté (manuel)</span>') : '<span>Mode manuel</span>';
+  $("#hsRound").textContent = "Manche " + S.round;
+  $("#hsBank").textContent = S.bank ? "🎁 " + S.bank + " pièces en réserve" : "";
+}
+function ranking(){ return Object.entries(S.players).sort((a,b)=>b[1]-a[1]); }
+function award(name, pts){
+  name = (name||"").trim().replace(/^@/, ""); if(!name) return null;
+  S.players[name] = (S.players[name]||0) + pts;
+  const known = new Set(store.get("known", [])); known.add(name); store.set("known", [...known].slice(-300));
+  return name;
+}
+function refreshList(){
+  const names = new Set([...Object.keys(S.players), ...store.get("known", [])]);
+  $("#plist").innerHTML = [...names].map(n=>`<option value="${esc(n)}">`).join("");
+}
+
+/* ======================= DÉROULÉ ======================= */
+async function runGame(){
+  const id = ++S.run;
+  try{
+    S.round++; store.set("round", S.round);
+    S.qs = pickQuestions(CFG.nq); S.qi = 0; S.players = {}; S.mult = 1; S.eclair = false; S.chestNo = 0;
+    header(); hostStatus(); timerUI(false); panel().innerHTML = "";
+    setScene(`<div class="center pop"><div class="ball">${S.round}</div><h2>MANCHE ${S.round}</h2>
+      <p class="lead">${CFG.nq} questions<br>Écris A, B, C ou D dans le chat<br>Les 5 plus rapides marquent !</p></div>`);
+    sfx.fanfare();
+    await say(`Bienvenue dans le Grand Jackpot ! Manche numéro ${S.round}. ${CFG.nq} questions, de plus en plus dures. Écrivez A, B, C ou D dans le chat. Attention, seule votre première réponse compte ! Les cinq plus rapides marquent des points. Abonnez-vous et partagez le live ! C'est parti !`);
+    await wait(600);
+    for(S.qi = 0; S.qi < CFG.nq; S.qi++){
+      await question(S.qs[S.qi]);
+      await reveal(S.qs[S.qi]);
+      await thankGifts();
+      const n = S.qi + 1;
+      if(n % 5 === 0 && n < CFG.nq) await recap();
+      if(CFG.ce && n % CFG.ce === 0 && n < CFG.nq) await chest();
+      else if(n % 7 === 0) await say(pick(["Likez le live, ça aide énormément !","Partagez le live à un ami, plus on est nombreux, plus c'est drôle !","Abonnez-vous pour ne rater aucune manche !"]));
+    }
+    await finale();
+  }catch(e){ if(!(e instanceof Abort)) console.error(e); }
+}
+
+async function question(q){
+  S.skip = false; header(); timerUI(true);
+  const T = S.eclair ? 10 : CFG.tq;
+  const pts = tierPts(S.qi) * S.mult * (S.eclair ? 3 : 1);
+  S.answers = new Map(); S.accepting = true;
+  $("#hTime").textContent = T; $("#tBar").style.width = "100%";
+  $("#hQ").textContent = (S.eclair ? "⚡ ÉCLAIR" : LV[q.lv]) + " · " + (S.qi+1) + "/" + CFG.nq;
+  setScene(`<div class="qbox pop">${esc(q.q)}</div>
+    <div class="opts">${q.opts.map((o,i)=>`<div class="opt" id="o${i}"><span class="L">${LETTERS[i]}</span><span>${esc(o.t)}</span></div>`).join("")}</div>`);
+  panel().innerHTML = S.live ? `<p class="hint">Les réponses du chat sont comptées automatiquement.</p>` : `<p class="hint">Repère les 5 premiers qui donnent la bonne réponse dans le chat.</p>`;
+  const intro = S.eclair ? "Question éclair !" : pick([`Question ${S.qi+1}, pour ${pts} points !`, `Question numéro ${S.qi+1}, elle vaut ${pts} points.`, `Attention, question ${S.qi+1} !`]);
+  await say(`${intro} ${q.q} ${q.opts.map((o,i)=>`${LETTERS[i]} : ${o.t}.`).join(" ")}`);
+  let warned = false, lastSec = T;
+  await wait(T*1000, left => {
+    const s = Math.max(0, Math.ceil(left/1000));
+    const n = $("#hTime"); n.textContent = s; n.classList.toggle("hot", s <= 5);
+    $("#tBar").style.width = Math.max(0, left/(T*1000)*100) + "%";
+    if(s !== lastSec){ lastSec = s; if(s <= 5 && s > 0) sfx.tick(); }
+    if(s === 5 && !warned){ warned = true; if(T > 10) speak("Plus que cinq secondes !"); }
+  });
+  S.accepting = false;
+}
+
+async function reveal(q){
+  const L = LETTERS[q.good], txt = q.opts[q.good].t;
+  scene().classList.add("revealed"); timerUI(false); $("#hTime").textContent = "";
+  q.opts.forEach((_,i) => $("#o"+i)?.classList.add(i===q.good ? "good" : "dim"));
+  sfx.fanfare();
+  const pts = tierPts(S.qi) * S.mult * (S.eclair ? 3 : 1);
+  const share = SHARE.map(k => Math.round(pts*k));
+  let winners = [], total = 0, good = 0;
+  const auto = S.live;
+  if(auto){
+    const all = [...S.answers.values()]; total = all.length;
+    const ok = all.filter(a => a.l === L).sort((a,b)=>a.t-b.t); good = ok.length;
+    winners = ok.slice(0,5).map(a => a.nick);
+  }
+  await say(pick(["Temps écoulé !","Stop !","C'est fini !"]) + ` La bonne réponse était la ${L} : ${txt} !`);
+  if(!auto){
+    panel().innerHTML = `<div class="htitle"><span>⚡ LES 5 PLUS RAPIDES</span><span id="rdT"></span></div>
+      ${["1er","2e","3e","4e","5e"].map((r,i)=>`<div class="hin"><b>${r}</b><input id="sp${i}" list="plist" placeholder="Pseudo" autocomplete="off" autocapitalize="off"><em>+${share[i]}</em></div>`).join("")}
+      <button class="ghost go" id="spOk">✔ Valider</button>`;
+    refreshList();
+    let typing = false;
+    panel().querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("focus", () => typing = true);
+      inp.addEventListener("keydown", e => { if(e.key === "Enter"){ const nx = inp.closest(".hin").nextElementSibling?.querySelector("input"); nx ? nx.focus() : $("#spOk").click(); } });
+    });
+    $("#spOk").onclick = () => { typing = false; S.skip = true; };
+    let left = CFG.auto ? CFG.rd*1000 : 1e9;
+    while(left > 0){
+      const el = $("#rdT"); if(el) el.textContent = CFG.auto && !typing ? Math.ceil(left/1000) + " s" : "en attente";
+      const r = await wait(Math.min(left, 500));
+      if(r === "skip") break;
+      if(!typing) left -= 500;
+      if(typing && !panel().contains(document.activeElement)) typing = false;
+    }
+    winners = [0,1,2,3,4].map(i => ($("#sp"+i)?.value||"").trim()).filter(Boolean);
+    document.activeElement?.blur?.();
+    panel().innerHTML = "";
+  }
+  winners = winners.map((w,i) => award(w, share[i])).filter(Boolean);
+  const list = winners.length
+    ? winners.map((w,i)=>`<li class="p"><i>${i+1}</i><b>${esc(w)}</b><em>+${share[i]}</em></li>`).join("")
+    : `<li class="none">Personne n'a trouvé 😱</li>`;
+  scene().insertAdjacentHTML("beforeend", `<ol class="fast pop"><li class="ttl">⚡ LES PLUS RAPIDES${auto ? ` · ${good}/${total} bonnes` : ""}</li>${list}</ol>`);
+  S.mult = 1; S.eclair = false;
+  if(winners[0]){
+    sfx.coin();
+    await say(pick([`Bravo ${winners[0]}, le plus rapide !`, `${winners[0]} a dégainé le premier !`, `Champion de la vitesse : ${winners[0]} !`])
+      + (auto && total ? ` ${good} bonnes réponses sur ${total}.` : ""));
+  } else {
+    await say(auto && total ? `Personne n'a trouvé sur ${total} réponses ! Elle était dure celle-là !` : "Personne n'a trouvé ! Elle était dure celle-là !");
+  }
+  await wait(CFG.auto ? 2500 : 1e9);
+}
+
+async function recap(){
+  timerUI(false); panel().innerHTML = "";
+  const r = ranking().slice(0,5);
+  setScene(`<div class="center pop"><h2>CLASSEMENT<br>APRÈS ${S.qi+1} QUESTIONS</h2>
+    <ol class="recap">${r.length ? r.map((p,i)=>`<li class="r${i+1}"><span class="rk">${i+1}</span><b>${esc(p[0])}</b><span class="pt">${fmt(p[1])}</span></li>`).join("") : `<li><b>Personne n'a encore marqué !</b></li>`}</ol></div>`);
+  sfx.fanfare();
+  if(r[0]) await say(`Point classement après ${S.qi+1} questions ! En tête, ${r[0][0]}, avec ${r[0][1]} points !` + (r[1] ? ` Deuxième, ${r[1][0]}.` : "") + (r[2] ? ` Troisième, ${r[2][0]}.` : "") + " Tout peut encore changer !");
+  else await say("Point classement : personne n'a encore marqué ! Répondez vite dans le chat !");
+  await wait(CFG.auto ? 5000 : 1e9);
+}
+
+function addCoins(n){
+  const c = S.chest; if(!c || c.opened) return;
+  c.coins += n; updChest();
+  if(c.coins >= c.goal){ c.opened = true; S.skip = true; }
+}
+function updChest(){
+  const c = S.chest; if(!c) return;
+  const n = $("#cN"), b = $("#cBar"); if(n) n.textContent = c.coins; if(b) b.style.width = Math.min(100, c.coins/c.goal*100) + "%";
+}
+async function chest(){
+  S.skip = false; timerUI(false);
+  S.chestNo++;
+  const goal = CFG.cg + CFG.cs*(S.chestNo-1);
+  S.chest = {goal, coins: 0, opened: false};
+  setScene(`<div class="center pop">
+    <h2>COFFRE N°${S.chestNo}</h2>
+    <div class="chest locked" id="chest"><div class="shine"></div><div class="body"></div><div class="lid"></div></div>
+    <div class="coins"><span id="cN">0</span><small> / ${goal} pièces</small></div>
+    <div class="bar"><div id="cBar" style="width:0%"></div></div>
+    <p class="lead" id="cMsg">🎁 Envoie un cadeau pour ouvrir le coffre<br>et débloquer un bonus !</p></div>`);
+  panel().innerHTML = `<div class="htitle"><span>${S.live ? "Les cadeaux sont comptés tout seuls" : "Ajoute les pièces reçues"}</span></div>
+    <div class="coinbtns">${[1,5,10,20].map(n=>`<button data-c="${n}">+${n}</button>`).join("")}</div>
+    <div class="hin"><input id="donor" list="plist" placeholder="Pseudo du top donateur (facultatif)" autocomplete="off"><button class="ghost" id="cSkip">Passer</button></div>`;
+  refreshList();
+  panel().querySelectorAll("[data-c]").forEach(b => b.onclick = () => { sfx.coin(); addCoins(+b.dataset.c); });
+  let skipped = false;
+  $("#cSkip").onclick = () => { skipped = true; S.skip = true; };
+  $("#donor").addEventListener("focus", () => S.paused = true);
+  $("#donor").addEventListener("blur", () => S.paused = false);
+  if(S.bank){ const b = S.bank; S.bank = 0; hostStatus(); addCoins(b); }
+  S.skip = false;
+  if(!S.chest.opened){
+    await say(`Coffre numéro ${S.chestNo} ! Il faut ${goal} pièces pour l'ouvrir. Envoyez vos cadeaux pour débloquer un bonus !`);
+    const maxMs = CFG.cw ? CFG.cw*1000 : 1e9;
+    let waited = 0;
+    while(!S.chest.opened && !skipped && waited < maxMs){
+      const step = Math.min(25000, maxMs - waited), t0 = performance.now();
+      const r = await wait(step);
+      waited += performance.now() - t0;
+      if(S.chest.opened || skipped || r === "skip") break;
+      if(waited < maxMs) await say(pick([`Plus que ${goal-S.chest.coins} pièces pour ouvrir le coffre !`, `Le coffre attend ! Encore ${goal-S.chest.coins} pièces !`, `Qui va ouvrir le coffre ? Il manque ${goal-S.chest.coins} pièces !`]));
+    }
+  }
+  S.paused = false; S.skip = false;
+  const c = S.chest, donorIn = ($("#donor")?.value||"").trim().replace(/^@/,"");
+  panel().innerHTML = "";
+  if(c.coins >= c.goal){
+    if(c.coins > c.goal) S.bank += c.coins - c.goal;
+    const el = $("#chest"); el.classList.remove("locked"); el.classList.add("open"); sfx.open();
+    const bonus = pick(BONUSES), donor = donorIn || topDonor();
+    $("#cMsg").outerHTML = `<div class="bonus pop"><b>${bonus.t}</b>${esc(bonus.d)}</div>`;
+    if(bonus.id === "x2") S.mult = 2;
+    if(bonus.id === "eclair") S.eclair = true;
+    let extra = "";
+    if(bonus.id === "donor"){ const n = award(donor, 500); extra = n ? ` Bravo ${n}, cinq cents points pour toi !` : ""; }
+    await say(`Le coffre est ouvert ! Merci ${donor ? "à " + donor + " et " : ""}à tous ! ${bonus.v}${extra}`);
+    S.donors = {}; S.giftQueue = [];
+    await wait(2500);
+  } else {
+    S.bank += c.coins;
+    $("#chest").classList.remove("locked"); sfx.sad();
+    $("#cMsg").textContent = "Le coffre reste fermé… on continue !";
+    await say("Dommage, le coffre reste fermé ! Les pièces sont gardées pour le prochain coffre. On continue !");
+    await wait(1200);
+  }
+  S.chest = null; hostStatus();
+}
+
+async function finale(){
+  S.qi = CFG.nq; header(); $("#hQ").textContent = "FIN"; timerUI(false); panel().innerHTML = "";
+  const r = ranking();
+  const pod = i => `<div class="pod g${i+1}"><span class="n">${r[i] ? esc(r[i][0]) : "—"}</span><span class="p">${r[i] ? fmt(r[i][1]) + " pts" : "&nbsp;"}</span><div class="blk">${i+1}</div></div>`;
+  setScene(`<div class="center pop">
+    <h2>CHAMPION<br>DE LA MANCHE ${S.round}</h2>
+    <div class="podium">${pod(1)}${pod(0)}${pod(2)}</div>
+    <p class="lead" style="color:var(--mute)">À gagner : la gloire éternelle 👑</p>
+    <p class="lead" id="nextMsg"></p></div>`);
+  panel().innerHTML = `<button class="big" id="again">▶ NOUVELLE MANCHE</button>`;
+  $("#again").onclick = () => { S.skip = true; };
+  sfx.open();
+  if(r[0]){
+    const hall = store.get("hall", []); hall.unshift({n:r[0][0], p:r[0][1], m:S.round}); store.set("hall", hall.slice(0,20));
+    await say(`Roulement de tambour… Le champion de la manche ${S.round} est ${r[0][0]}, avec ${r[0][1]} points ! Il ne gagne rien… à part la gloire éternelle ! ${r[1] ? `Bravo aussi à ${r[1][0]}` + (r[2] ? ` et ${r[2][0]}` : "") + " !" : ""}`);
+  } else {
+    await say("Fin de la manche ! Pas de champion cette fois, à vous de jouer à la prochaine !");
+  }
+  await say("Une nouvelle manche avec de nouvelles questions arrive dans trente secondes. Abonnez-vous, likez, et restez avec nous !");
+  await wait(CFG.auto ? 30000 : 1e9, l => { const m=$("#nextMsg"); if(m && CFG.auto) m.textContent = "Nouvelle manche dans " + Math.ceil(l/1000) + " s"; });
+  runGame();
+}
+
+/* ======================= COMMANDES ======================= */
+function renderHall(){
+  const h = store.get("hall", []);
+  $("#hall").innerHTML = h.length ? h.slice(0,8).map(x=>`<div><span>👑 ${esc(x.n)} · manche ${x.m}</span><span>${fmt(x.p)} pts</span></div>`).join("") : `<p class="hint">Les vainqueurs de chaque manche apparaîtront ici.</p>`;
+}
+renderHall();
+
+$("#ttGo").onclick = liveConnect;
+$("#go").onclick = () => {
+  audio(); saveSettings(); applyLook(); CFG = SET(); S.voice = $("#von").checked;
+  $("#bVoice").classList.toggle("on", S.voice);
+  if(SERVER && !S.live && $("#tt").value.trim()) liveConnect();
+  try{ navigator.wakeLock?.request("screen").catch(()=>{}); }catch(e){}
+  try{ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); }catch(e){}
+  $("#setup").hidden = true; $("#game").hidden = false;
+  runGame();
+};
+$("#vtest").onclick = () => {
+  audio(); S.voice = true;
+  const msg = $("#vdiag");
+  if(!("speechSynthesis" in window)){ msg.textContent = "❌ Ce navigateur ne sait pas faire parler la page. Ouvre le jeu dans Chrome ou Safari."; return; }
+  let started = false;
+  try{
+    if(speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance("Bienvenue dans le Grand Jackpot ! Répondez A, B, C ou D dans le chat !");
+    const v = chooseVoice(); if(v){ u.voice = v; u.lang = v.lang; } else u.lang = "fr-FR";
+    u.rate = parseFloat($("#vr").value) || 1.05;
+    u.onstart = () => { started = true; msg.textContent = "✅ La voix fonctionne."; };
+    u.onerror = e => { msg.textContent = "❌ Erreur de voix : " + (e.error || "inconnue") + ". Ouvre le jeu dans Chrome ou Safari."; };
+    speechSynthesis.speak(u);
+  }catch(e){ msg.textContent = "❌ Voix bloquée ici. Ouvre le jeu dans Chrome ou Safari."; return; }
+  msg.textContent = "⏳ Test en cours…";
+  setTimeout(() => { if(!started) msg.textContent = "❌ Aucun son. Ouvre le jeu dans Chrome ou Safari et sors le téléphone du mode silencieux."; }, 3500);
+};
+$("#bPause").onclick = () => {
+  S.paused = !S.paused;
+  $("#bPause").textContent = S.paused ? "▶ Reprendre" : "⏸ Pause";
+  $("#bPause").classList.toggle("on", S.paused);
+  if(S.paused) hush();
+};
+$("#bNext").onclick = () => { S.skip = true; hush(); };
+$("#bVoice").onclick = () => { S.voice = !S.voice; $("#bVoice").classList.toggle("on", S.voice); if(!S.voice) hush(); toast(S.voice ? "Voix activée" : "Voix coupée"); };
+$("#bFull").onclick = () => { try{ document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(()=>toast("Plein écran non disponible ici")); }catch(e){ toast("Plein écran non disponible ici"); } };
+$("#bMenu").onclick = () => {
+  const b = $("#bMenu");
+  if(!b.dataset.sure){ b.dataset.sure = "1"; b.textContent = "Quitter ?"; setTimeout(()=>{ delete b.dataset.sure; b.textContent = "☰ Menu"; }, 2500); return; }
+  S.run++; hush(); S.paused = false; S.accepting = false; S.chest = null;
+  $("#bPause").textContent = "⏸ Pause"; $("#bPause").classList.remove("on");
+  delete b.dataset.sure; b.textContent = "☰ Menu";
+  renderHall(); $("#game").hidden = true; $("#setup").hidden = false;
+};
+</script>
